@@ -1,0 +1,12 @@
+% Auto generated Matlab script caller.
+opts={{ matlab_script }};
+{% for opt, value in opts.items() %}
+{% if value==True %}
+opts.{{ opt }} = true;
+{% elif value==False %}
+opts.{{ opt }} = false;
+{% else %}
+opts.{{ opt }} ='{{ opts[opt] }}';
+{% endif %}
+{%- endfor %}
+{{ matlab_script }}(opts);
