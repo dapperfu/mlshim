@@ -15,11 +15,6 @@ setup(name='mlshim',
       license='BSD',
       packages=['mlshim'],
 	  package_data={'mlshim': ['*.jinja', 'license.txt']},
-	  install_requires=[
-          'jinja2',
-      ],
-	  develop_requires=[
-	      'pytest',
-	  ],
+	  install_requires=['jinja2', ],
       include_package_data=True,
       zip_safe=False)
