@@ -5,16 +5,17 @@
 
 try
     fprintf('########## Started ##########\n');
+    restoredefaultpath;
 {% if cwd is not none %}
-    cd('{{ cwd }}');
+    cd('{{ working_directory }}');
 {% endif %}
 
 {%- for path in paths %}
-    add('{{ d }}');
+    add('{{ path }}');
 {% endfor %}
 
-{%- for d in data %}
-    load('{{ d }}');
+{%- for datafile in datafiles %}
+    load('{{ datafile }}');
 {% endfor %}
 
 {%- for script in scripts %}

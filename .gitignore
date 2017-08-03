@@ -87,3 +87,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+/test-reports/report.html
+/test-reports/report.xml
+/mlshim_*.m
