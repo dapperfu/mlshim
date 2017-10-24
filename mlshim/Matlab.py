@@ -159,6 +159,7 @@ class Matlab(object):
         run_script_body = self._generate_run_script(scripts, datafiles, paths, cwd)
         with open(self.run_script, 'w') as fid:
             print(run_script_body, file=fid)
+        time.sleep(5);
         matlab_run_wait(self._cmd, self.log_file)
 
     @property
