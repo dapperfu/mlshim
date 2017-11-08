@@ -4,9 +4,14 @@
 {% endfor %}
 
 try
-    fprintf('########## Started ##########\n');
+    fprintf('\n###############################\n');
+    fprintf('##########  Started  ##########\n');
+    fprintf('###############################\n');
     restoredefaultpath;
-{% if cwd is not none %}
+{% for lang, cfg in mex.items() %}
+
+{% endfor %}
+{% if working_directory is not none %}
     cd('{{ working_directory }}');
 {% endif %}
 
@@ -18,16 +23,28 @@ try
     load('{{ datafile }}');
 {% endfor %}
 
+{% if profile %}
+
+{% endif %}
 {%- for script in scripts %}
     {{ script }}
 {% endfor %}
+
+{% if profile %}
+
+{% endif %}
+
 catch me
-    fprintf('########## Failed ##########\n');
+    fprintf('##############################\n');
+    fprintf('##########  Failed  ##########\n');
+    fprintf('##############################\n');
     fprintf('ERROR: %s (%s)\n\n',me.message, me.identifier)
     for i = numel(me.stack):-1:1
         fprintf('[Line %02d]: %s\n',me.stack(i).line,me.stack(i).file)
     end
-    quit('force');
+    exit(1);
 end
+fprintf('\n##############################\n');
 fprintf('########## Finished ##########\n');
-quit('force');
+fprintf('##############################\n');
+exit(0);
