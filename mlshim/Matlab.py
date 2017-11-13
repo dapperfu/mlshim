@@ -2,39 +2,34 @@
 import os
 import socket
 import tempfile
-import uuid
 from datetime import datetime, timezone
+import datetime
 from subprocess import Popen
 from .utils import short_path
+import time
+from cached_property import cached_property
 
 from jinja2 import Environment, FileSystemLoader, Template
 
-matlab_root = r"C:\Program Files\Matlab"
+from .consts import _MATLAB, _APPDATA, _HERE
+from .utils import get_versions, get_licenses
+
+if not os.path.exists(_MATLAB):
+    raise FileNotFoundError(_MATLAB)
+
+_SLEEP_TIME = 0.5
+_START_TIMEOUT = 180
+_RUN_TIMEOUT = 3600
 
 class Matlab(object):
-    """The summary line for a cl
-    Attributes
-    ----------
-    START_TIMEOUT : int
-        Amount of time to wait for Matlab to start and create the logfile.
-    RUN_TIMEOUT : int
-        Amount of time to allow Matlab to execute the scripts.
-    """
-
-    # Time in Seconds
-
-    _SLEEP_TIME = 5
-    _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-    _ENV = Environment(loader=FileSystemLoader(_THIS_DIR), trim_blocks=True)
-
-    START_TIMEOUT = 180
-    RUN_TIMEOUT = 7200
-
     def __init__(
             self,
-            root=matlab_root,
+            working_directory=os.path.abspath(os.curdir),
+            template="run_script.m",
             version=None,
-            run_dir=tempfile.gettempdir()):
+            pref_dir=None,
+            env_dirs=list(),
+            ):
         """Example function with types documented in the docstring.
 
 
@@ -44,57 +39,64 @@ class Matlab(object):
             Root directory for Matlab installs.
             Default: C:\Program Files\Matlab
         version : str
-            MATLAB version to use. (R2014b, R2016a, R2017a)
+            MATLAB version to use. (R2014b, R2016a, R2017b, etc.)
             Default: Latest version found in `root`
             eg. R2016b > R2015a > R2009b ...
-        run_dir : str
+        working_directory : str
             Directory to put run script and log file in.
             Default: Output of ```tempfile.gettempdir()```
         """
-
-        # Assign root.
-        self.root = root
+        # Matlab script template
+        self.template = template
         # Assign version
         if version is None:
             # Get all matlab versions in the given root.
-            vers = versions(self.root)
+            vers = get_versions()
             self.version = vers[-1]
         else:
             self.version = version
-
-        self.uuid = uuid.uuid4().hex
 
         # Verify that the executable exists given the root & version. Otherwise
         # raise error.
         if not os.path.exists(self.exe):
             raise FileNotFoundError(self.exe)
 
-        self.run_dir = short_path(os.path.abspath(run_dir))
-
-    def _cmd(self):
+        self.working_directory = os.path.abspath(working_directory)
+        
+        if pref_dir is None:
+            self.pref_dir = os.path.join(self.working_directory, '.prefs')
+        else:
+            self.pref_dir = pref_dir
+            
+        self.licences = get_licenses()
+           
+        loader_directories = [_HERE, os.curdir]+env_dirs
+        self._env = Environment(loader=FileSystemLoader(loader_directories),trim_blocks=True)
+            
+    @property
+    def cmd(self):
         """
 
         """
         cmd_array = [self.exe,
-                     "-nosplash",
                      "-logfile", self.log_file,
                      "-r",
-                     "run('{}');quit('force');".format(self.run_script)]
+                     "run('{}');".format(self.run_script)]
         return cmd_array
 
     @property
     def log_file(self):
-        log_name = "mlshim_{}.log".format(self.uuid)
-        return os.path.join(self.run_dir, log_name)
+        log_name = "mlshim_{}.log".format(self.now)
+        return os.path.join(self.working_directory, log_name)
 
     @property
     def run_script(self):
-        run_name = "mlshim_{}.m".format(self.uuid)
-        return os.path.join(self.run_dir, run_name)
+        run_name = "mlshim_{}.m".format(self.now)
+        return os.path.abspath(os.path.join(self.working_directory, run_name))
 
     @property
     def matlabroot(self):
-        return os.path.join(self.root, self.version)
+        return os.path.join(_MATLAB, self.version)
 
     @property
     def exe(self):
@@ -107,97 +109,39 @@ class Matlab(object):
         # script creation machine
         # script creation,
         # and random uuid.
-        headers["Script Creation"] = datetime.now(
-            timezone.utc).astimezone().isoformat()
+        headers["Script Creation"] = self._now.astimezone().isoformat()
         headers["Machine"] = socket.gethostname()
         headers["User"] = os.getlogin()
-        headers["UUID"] = self.uuid
         return headers
 
-    def _generate_run_script(self,
-                             scripts=list(),
-                             datafiles=list(),
-                             paths=list(),
-                             working_directory=os.curdir):
-        if isinstance(scripts, str):
-            scripts = [scripts, ]
-        if isinstance(datafiles, str):
-            datafiles = [datafiles, ]
-        if isinstance(paths, str):
-            paths = [paths, ]
-        working_directory = os.path.abspath(working_directory)
-        return self._template.render(headers=self.headers,
-                                     working_directory=working_directory,
-                                     paths=paths,
-                                     datafiles=datafiles,
-                                     scripts=scripts)
+    def _render_template(self, **kwargs):
+        return self._template.render(obj=self, **kwargs)
 
-    def run(self, scripts=list(), datafiles=list(), paths=list(), cwd=os.curdir):
-        """Example function with types documented in the docstring.
-
-        `PEP 484`_ type annotations are supported. If attribute, parameter, and
-        return types are annotated according to `PEP 484`_, they do not need to be
-        included in the docstring:
-
-        Parameters
-        ----------
-        scripts : str, list
-            Matlab script(s) to run. Must exist in the path.
-        datafiles : str, list
-            Data files to load. Loaded with `load` in the Matlab environment.
-        paths : str, list
-        cwd : str
-            The working directory to execute Matlab in.
-
-        Returns
-        -------
-        bool
-            True if successful, False otherwise.
-        """
-
-        cwd = os.path.abspath(cwd)
-        run_script_body = self._generate_run_script(scripts, datafiles, paths, cwd)
+    def run(self, **kwargs):
+        run_script_body = self._render_template(**kwargs)
         with open(self.run_script, 'w') as fid:
             print(run_script_body, file=fid)
-        time.sleep(5);
-        matlab_run_wait(self._cmd, self.log_file)
+        time.sleep(1);
+        matlab_runner(self)
+        
+    @cached_property
+    def _now(self):
+        return datetime.datetime.now()
+        
+    @property
+    def now(self):
+        return datetime.datetime.strftime(self._now, "%Y%b%d_%H%m%S_%f")
 
     @property
     def _template(self):
-        return self._ENV.get_template("matlab_run_template.jinja")
+        return self._env.get_template(self.template)
 
-
-def versions(root=matlab_root):
-    """Return all versions of MATLAB installed in a given folder.
-    
-    Returns
-    -------
-    list
-
+def matlab_runner(mlab):
     """
-    vers = list()
-    for ver in os.listdir(root):
-        if os.path.exists(os.path.join(root, ver, "bin", "matlab.exe")):
-            vers.append(ver)
-    vers.sort()
-    return vers
-
-import time
-
-def matlab_run_wait(cmd_array, matlab_log=None):
-    """
-    Run the cmd_array with Popen, parse matlab_log for
+    Run the cmd_array with Popen, parse mlab.log_file for
         output from generate_run_script.
 
     Wait until matlab finishes to exit.
-
-    Args:
-
-        cmd_array (list)
-            Output of ```mlrunner.matlab_cmd```
-
-        matlab_log (str)
-            Logfile to parse for status.
 
     Exceptions:
         TimeoutError("Logfile creation timed out")
@@ -205,37 +149,37 @@ def matlab_run_wait(cmd_array, matlab_log=None):
         TimeoutError("Matlab execution timed out")
         Runtimeprint("Matlab processing failed")
     """
+    
+    if not os.path.exists(mlab.working_directory):
+        os.makedirs(mlab.working_directory)
+    
+    os.environ["MATLAB_PREFDIR"] = mlab.prefdir
+    os.chdir(mlab.working_directory)
        
     # Remove log file if it exists.
-    if os.path.exists(matlab_log):
-        os.unlink(matlab_log)
+    if os.path.exists(mlab.log_file):
+        os.unlink(mlab.log_file)
     
     # Run the matlab command
-    proc = Popen(cmd_array)
+    proc = Popen(mlab.cmd)
     # Start timer
     t_start = time.time()
 
     # Step 1. Wait for the log file to exist
-    while not os.path.exists(matlab_log):
+    while not os.path.exists(mlab.log_file):
         # Check to see if timeout has been exceeded
-        if time.time() - t_start > START_TIMEOUT:
+        if time.time() - t_start > _START_TIMEOUT:
             # Print the ERROR and raise a timeout ERROR
-            print('{:.2f}s Timelimit Exceeded'.format(START_TIMEOUT))
+            print('{:.2f}s Timelimit Exceeded'.format(_START_TIMEOUT))
             raise TimeoutError("Logfile creation timed out")
-        print("Waiting for log to exist.")
         # Sleep to allow the process to run
-        time.sleep(SLEEP_TIME)
-    if not os.path.exists(matlab_log):
-        print('Matlab start failed')
-        # exit
-    else:
-        print("Logfile created in {:.2f}s".format(time.time() - t_start))
+        time.sleep(_SLEEP_TIME)
     # Step 2
     # Wait for Matlab to start and execute the script
     started = False
     while not started:
         # Read the log file
-        with open(matlab_log, "r") as fid:
+        with open(mlab.log_file, "r") as fid:
             lines = fid.readlines()
         # Read each of the lines in it and remove the new line endings.
         lines = [line.strip() for line in lines]
@@ -243,19 +187,18 @@ def matlab_run_wait(cmd_array, matlab_log=None):
         # the script.
         if "########## Started ##########" in lines:
             started = True
-            continue
+            break
         # Check to see if timeout has been exceeded
-        if time.time() - t_start > START_TIMEOUT:
+        if time.time() - t_start > _START_TIMEOUT:
             proc.kill()
             # Print the error and raise a timeout error
-            print('{:.2f}s Timelimit Exceeded'.format(START_TIMEOUT))
-            TimeoutError("Matlab start timed out")
-        print("Waiting for Matlab to start.")
-        time.sleep(SLEEP_TIME)
+            print('{:.2f}s Timelimit Exceeded'.format(_START_TIMEOUT))
+            raise TimeoutError("Matlab start timed out")
+        time.sleep(_SLEEP_TIME)
     # While the processing isn't complete
     while True:
         # Open the log file read only
-        with open(matlab_log, "r") as fid:
+        with open(mlab.log_file, "r") as fid:
             lines = fid.readlines()
         # Strip ending new line from all lines
         lines = [line.strip() for line in lines]
@@ -269,11 +212,10 @@ def matlab_run_wait(cmd_array, matlab_log=None):
             # Throw error
             raise RuntimeError("Matlab processing failed")
         # Check to see if timeout has been exceeded
-        if time.time() - t_start > START_TIMEOUT:
+        if time.time() - t_start > _START_TIMEOUT:
             # Kill the process
             proc.kill()
             # Print the error and raise a timeout error
-            print('%.2fs Timelimit Exceeded', RUN_TIMEOUT)
+            print('%.2fs Timelimit Exceeded', _RUN_TIMEOUT)
             raise TimeoutError("Matlab execution timed out")
-        print("Waiting for Matlab to finish.")
-        time.sleep(SLEEP_TIME)
+        time.sleep(_SLEEP_TIME)
