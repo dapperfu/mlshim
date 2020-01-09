@@ -1,0 +1,6 @@
+include versioneer.py
+include mlshim/_version.py
+include mlshim/*.m
+include mlshim/license.txt
+include mlshim/*.jinja2
+

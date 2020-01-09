@@ -1,35 +1,39 @@
 # mlshim
 
-A shim to run Matlab with Python. [Windows only](https://www.mathworks.com/help/matlab/ref/matlabwindows.html).
+A shim to run MATLAB with through Python. Uses Jinja2 to generate a .m file to run.
 
-Uses Jinja2 to generate a .m file to run. 
+[Windows only](https://www.mathworks.com/help/matlab/ref/matlabwindows.html) since that what Automotive, Aerospace, & Heavy Equipment are all using
 
-Uses a new [Matlab preferences](https://www.mathworks.com/matlabcentral/answers/93696-how-do-i-change-the-matlab-preferences-directory-location) directory to start Matlab from a clean slate.
+## Design & Justification:
 
-Created for use with generating Model Based Design code with Jenkins and maintaining tracability. (ISO 26262/IEC 61508).
+Created for use with generating Model Based Design code with Jenkins and maintaining traceability. (ISO 2626, IEC 61508, DO-178B/C).
 
-This is heavily tailored to suit my use case, FOSS because I developed it on my time for use at work.
+- Uses a new [MATLAB preferences](https://www.mathworks.com/matlabcentral/answers/93696-how-do-i-change-the-matlab-preferences-directory-location) directory to start MATLAB.
+  - Removes any customization that engineers may have in ```startup.m``` or their preferences from causing potential issues.
+  - Repeatable builds
+  - Moves MATLAB towards proper DevOps.
+- Create artifacts for everything that MATLAB touches.
+- Run MATLAB from Python:
+  - Treat MATLAB as one tool in a toolchain (not the entire toolchain)
+  - Execute Matlab in Python unit tests.
 
-- Run Matlab from Python
-- Run Matlab through pytest
-- Create artifacts for everything that Matlab runs.
+# Install
 
+    pip install git+https://github.com/jed-frey/mlshim.git
 
 # Alternatives
-
-Unless you need to thread the needle on my use case, these are probably a better idea:
 
 ## Python-matlab-bridge
 
 https://arokem.github.io/python-matlab-bridge/
 
-For just interactive Python <-> Matlab scripting this is an excellent solution but I ran into issues with my specific use cases. 
+For just interactive Python <-> MATLAB scripting this is an excellent solution but I ran into issues with my specific use cases. 
 
 - Pros:
   - Works great.
   - Jupyter notebook magics
 - Cons:
-  - If something intetrrupts the bridge script Matlab is no longer controllable.
+  - If something interrupts the bridge script MATLAB is no longer controllable. (i.e. ```clear all```)
   - Requires admin access to install libzmq. Making it harder to deploy in a corporate environment.
 
 
@@ -38,16 +42,43 @@ For just interactive Python <-> Matlab scripting this is an excellent solution b
 - Pros:
   - Supported by [Mathworks](https://www.mathworks.com/help/matlab/matlab-engine-for-python.html)
 - Cons:
-  - Beholden to Mathwork's and your company's Python & Matlab upgrade cycle. For example R2016b only supports 2.7, 3.3, 3.4, and 3.5.
-  - For reasons outside of my control some of our certified projects are still on much older versions.
+  - Beholden to Mathwork's and your company's Python & MATLAB upgrade cycle. For example R2016b only supports 2.7, 3.3, 3.4, and 3.5.
+  - For reasons outside of engineers control (certifications, etc) projects are often on older versions of Matlab.
 
-## /wait
+## MATLAB flag options:
+
+Start MATLAB program from Windows system prompt.
+
+https://www.mathworks.com/help/matlab/ref/matlabwindows.html
+
+### ```-wait```
+
+> Use in a script to process the results from MATLAB. Calling MATLAB with this option blocks the script from continuing until the results are generated.
 
 - Pros:
   - No Python needed
+  - Supported by Mathworks
 - Cons:
-  - Matlab can hang indefinitely.
+  - MATLAB can hang indefinitely.
 
-# Install
+## ```-batch```
 
-    pip install git+https://github.com/jed-frey/mlshim.git
+> Execute MATLAB script, statement, or function non-interactively. MATLAB:  
+> 
+> - Starts without the desktop
+> - Does not display the splash screen
+> - Executes statement
+> - Disables changes to preferences
+> - Disables toolbox caching
+> - Logs text to stdout and stderr
+> - Does not display dialog boxes
+> - Exits automatically with exit code 0 if script executes successfully. Otherwise, MATLAB terminates with a non-zero exit code.
+
+- Pros:
+  - No Python Needed.
+  - Supported by MathWorks
+  - Perfect solution in an *ideal* world.
+- Cons:
+  - R2019a+ only. (Certified software development often lags on versions.)
+  - No desktop makes debugging very tedious.
+    Way too much Simulink/MATLAB code is 'manumatic' and needs a trained monkey for edge cases. (Source: Used to be said trained monkey).

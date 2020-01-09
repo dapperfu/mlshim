@@ -1,18 +1,23 @@
-# -*- coding: utf-8 -*-
+import datetime
 import os
 import socket
 import tempfile
-from datetime import datetime, timezone
-import datetime
-from subprocess import Popen
-from .utils import short_path
 import time
+from datetime import datetime
+from datetime import timezone
+from subprocess import Popen
+
 from cached_property import cached_property
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
+from jinja2 import Template
 
-from jinja2 import Environment, FileSystemLoader, Template
-
-from .consts import _MATLAB, _APPDATA, _HERE
-from .utils import get_versions, get_licenses
+from .consts import _APPDATA
+from .consts import _HERE
+from .consts import _MATLAB
+from .utils import get_licenses
+from .utils import get_versions
+from .utils import short_path
 
 if not os.path.exists(_MATLAB):
     raise FileNotFoundError(_MATLAB)
@@ -21,16 +26,17 @@ _SLEEP_TIME = 0.5
 _START_TIMEOUT = 180
 _RUN_TIMEOUT = 3600
 
-class Matlab(object):
+
+class Matlab:
     def __init__(
-            self,
-            working_directory=os.path.abspath(os.curdir),
-            template="run_script.m",
-            version=None,
-            pref_dir=None,
-            env_dirs=list(),
-            ):
-        """Example function with types documented in the docstring.
+        self,
+        working_directory=os.path.abspath(os.curdir),
+        template="run_script.m",
+        version=None,
+        pref_dir=None,
+        env_dirs=list(),
+    ):
+        r"""Example function with types documented in the docstring.
 
 
         Parameters
@@ -62,36 +68,41 @@ class Matlab(object):
             raise FileNotFoundError(self.exe)
 
         self.working_directory = os.path.abspath(working_directory)
-        
+
         if pref_dir is None:
-            self.pref_dir = os.path.join(self.working_directory, '.prefs')
+            self.pref_dir = os.path.join(self.working_directory, ".prefs")
         else:
             self.pref_dir = pref_dir
-            
+
         self.licences = get_licenses()
-           
-        loader_directories = [_HERE, os.curdir]+env_dirs
-        self._env = Environment(loader=FileSystemLoader(loader_directories),trim_blocks=True)
-            
+
+        loader_directories = [_HERE, os.curdir] + env_dirs
+        self._env = Environment(
+            loader=FileSystemLoader(loader_directories), trim_blocks=True
+        )
+
     @property
     def cmd(self):
         """
 
         """
-        cmd_array = [self.exe,
-                     "-logfile", self.log_file,
-                     "-r",
-                     "run('{}');".format(self.run_script)]
+        cmd_array = [
+            self.exe,
+            "-logfile",
+            self.log_file,
+            "-r",
+            f"run('{self.run_script}');",
+        ]
         return cmd_array
 
     @property
     def log_file(self):
-        log_name = "mlshim_{}.log".format(self.now)
+        log_name = f"mlshim_{self.now}.log"
         return os.path.join(self.working_directory, log_name)
 
     @property
     def run_script(self):
-        run_name = "mlshim_{}.m".format(self.now)
+        run_name = f"mlshim_{self.now}.m"
         return os.path.abspath(os.path.join(self.working_directory, run_name))
 
     @property
@@ -119,15 +130,15 @@ class Matlab(object):
 
     def run(self, **kwargs):
         run_script_body = self._render_template(**kwargs)
-        with open(self.run_script, 'w') as fid:
+        with open(self.run_script, "w") as fid:
             print(run_script_body, file=fid)
-        time.sleep(1);
+        time.sleep(1)
         matlab_runner(self)
-        
+
     @cached_property
     def _now(self):
         return datetime.datetime.now()
-        
+
     @property
     def now(self):
         return datetime.datetime.strftime(self._now, "%Y%b%d_%H%m%S_%f")
@@ -135,6 +146,7 @@ class Matlab(object):
     @property
     def _template(self):
         return self._env.get_template(self.template)
+
 
 def matlab_runner(mlab):
     """
@@ -149,17 +161,17 @@ def matlab_runner(mlab):
         TimeoutError("Matlab execution timed out")
         Runtimeprint("Matlab processing failed")
     """
-    
+
     if not os.path.exists(mlab.working_directory):
         os.makedirs(mlab.working_directory)
-    
+
     os.environ["MATLAB_PREFDIR"] = mlab.prefdir
     os.chdir(mlab.working_directory)
-       
+
     # Remove log file if it exists.
     if os.path.exists(mlab.log_file):
         os.unlink(mlab.log_file)
-    
+
     # Run the matlab command
     proc = Popen(mlab.cmd)
     # Start timer
@@ -170,7 +182,7 @@ def matlab_runner(mlab):
         # Check to see if timeout has been exceeded
         if time.time() - t_start > _START_TIMEOUT:
             # Print the ERROR and raise a timeout ERROR
-            print('{:.2f}s Timelimit Exceeded'.format(_START_TIMEOUT))
+            print(f"{_START_TIMEOUT:.2f}s Timelimit Exceeded")
             raise TimeoutError("Logfile creation timed out")
         # Sleep to allow the process to run
         time.sleep(_SLEEP_TIME)
@@ -192,7 +204,7 @@ def matlab_runner(mlab):
         if time.time() - t_start > _START_TIMEOUT:
             proc.kill()
             # Print the error and raise a timeout error
-            print('{:.2f}s Timelimit Exceeded'.format(_START_TIMEOUT))
+            print(f"{_START_TIMEOUT:.2f}s Timelimit Exceeded")
             raise TimeoutError("Matlab start timed out")
         time.sleep(_SLEEP_TIME)
     # While the processing isn't complete
@@ -216,6 +228,6 @@ def matlab_runner(mlab):
             # Kill the process
             proc.kill()
             # Print the error and raise a timeout error
-            print('%.2fs Timelimit Exceeded', _RUN_TIMEOUT)
+            print("%.2fs Timelimit Exceeded", _RUN_TIMEOUT)
             raise TimeoutError("Matlab execution timed out")
         time.sleep(_SLEEP_TIME)
