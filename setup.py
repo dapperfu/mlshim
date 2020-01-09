@@ -7,7 +7,6 @@ def readme():
     with open("README.md") as f:
         return f.read()
 
-
 setup(
     name="mlshim",
     version=versioneer.get_version(),
