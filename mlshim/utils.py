@@ -1,4 +1,6 @@
 import ctypes
+import glob
+import os
 from ctypes import wintypes
 
 _GetShortPathNameW = ctypes.windll.kernel32.GetShortPathNameW
@@ -9,7 +11,25 @@ _GetShortPathNameW.argtypes = [
 ]
 _GetShortPathNameW.restype = wintypes.DWORD
 
-from .consts import _MATLAB, _APPDATA
+from .consts import _APPDATA
+
+from functools import wraps
+
+
+def abs_short_path(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        # Get a path from the function
+        path = f(*args, **kwargs)
+        # Get the absolute path.
+        path = os.path.abspath(path)
+        # If the path exists (short path dosen't exist otherwise)
+        if os.path.exists(path):
+            path = short_path(path)
+        # Return Windowfied path.
+        return path
+
+    return wrapper
 
 
 def short_path(long_name):
@@ -27,11 +47,8 @@ def short_path(long_name):
             output_buf_size = needed
 
 
-import os
-import glob
-
-
 def get_licenses(matlab_version=None, root=None):
+    """Return all licenses for the current user."""
     if root is None:
         if _APPDATA is None:
             return None
@@ -44,7 +61,7 @@ def get_licenses(matlab_version=None, root=None):
     return license_files
 
 
-def get_versions(root=_MATLAB):
+def get_versions(root=None):
     """Return all versions of MATLAB installed in a given folder.
     
     Returns
@@ -52,6 +69,8 @@ def get_versions(root=_MATLAB):
     list
 
     """
+    if root is None:
+        from .consts import _MATLAB_BASE as root
     vers = list()
     for ver in os.listdir(root):
         if os.path.exists(os.path.join(root, ver, "bin", "matlab.exe")):
