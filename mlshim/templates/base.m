@@ -1,13 +1,13 @@
 %% Automatically Generated Run Script
 {% for header, value in headers.items() %}
-% {{ header }}: {{ value }} 
+% {{ header }}: {{ value }}
 {% endfor %}
 
 try
     fprintf('########## Started ##########\n');
-    
+
 {% block body %}
-    
+
 {% if cwd is not none %}
     cd('{{ working_directory }}');
 {% endif %}

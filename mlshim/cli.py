@@ -1,6 +1,7 @@
 """Console script for mlshim."""
 import os
 import sys
+from typing import Optional
 
 import click
 
@@ -17,7 +18,12 @@ class Config:
     """
 
     def __init__(self):  # Note: This object must have an empty constructor.
-        pass
+        self.logging: type(logging)
+        self.verbose: int
+        self.working_directory: Optional[str]
+        self.debug_file: Optional[str]
+        self.version: Optional[str]
+        self.matlab: Matlab
 
 
 # pass_config is a decorator for functions that pass 'Config' objects.
@@ -41,7 +47,7 @@ pass_config = click.make_pass_decorator(Config, ensure=True)
 @click.option("--version", "--ver", help="MATLAB version", default=None)
 @pass_config
 def main(
-    config, **kwargs
+    config: Config, **kwargs
 ):  # info: Config, verbose: int, log: str, ver: str, tempdir):
     """
     # Use the verbosity count to determine the logging level.
@@ -49,7 +55,7 @@ def main(
     for key, value in kwargs.items():
         setattr(config, key, value)
     config.logging = configure_logger(
-        stream_level=config.verbose, debug_file=config.debug_file,
+        stream_level=config.verbose, debug_file=config.debug_file
     )
     config.matlab = Matlab(template=None, version=config.version)
     config.logging.debug(f"MATLAB Prefs Dir: {config.matlab.pref_dir}")
@@ -68,44 +74,34 @@ def debug(config: Config):
 
 @main.command()
 @pass_config
-def launch(_: Config):
+def launch(config: Config):
     """
-    
+
     """
-    matlab = MATLAB(template="launch_template.m")
-    matlab.run(wait=False)
+    config.matlab.template = "launch_template.m"
+    config.matlab.timeout = 0
+    config.matlab.run()
 
 
 @main.command()
 @click.argument("m_script")
 @pass_config
-def run(_: Config, m_script: str):
+def run(config: Config, m_script: str):
     """
     Run a matlab script.
     """
-    from mlshim import MATLAB
-
-    matlab = MATLAB(template="run_template.m")
-    config.logging.info(f"MATLAB Prefs Dir: {matlab.pref_dir}")
-    config.logging.info(f"MATLAB Working Directory: {matlab.working_directory}")
-    config.logging.info(f"MATLAB Log File: {matlab.log_file}")
-    matlab.run(wait=True, scripts=[m_script])
+    config.matlab.run(scripts=[m_script])
 
 
 @main.command()
 @click.argument("model")
 @pass_config
-def build(_: Config, model: str):
+def build(config: Config, model: str):
     """
-    Run a matlab script.
+    Build Simulink Model.
     """
-    from mlshim import MATLAB
-
-    matlab = MATLAB(template="run_template.m")
-    config.logging.info(f"MATLAB Prefs Dir: {matlab.pref_dir}")
-    config.logging.info(f"MATLAB Working Directory: {matlab.working_directory}")
-    config.logging.info(f"MATLAB Log File: {matlab.log_file}")
-    matlab.run(wait=True, scripts=m_scripts)
+    config.matlab.template = "build_template.m"
+    config.matlab.run(model=model)
 
 
 if __name__ == "__main__":

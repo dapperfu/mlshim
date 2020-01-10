@@ -11,12 +11,17 @@ _GetShortPathNameW.argtypes = [
 ]
 _GetShortPathNameW.restype = wintypes.DWORD
 
-from .consts import _APPDATA
+from mlshim.consts import _APPDATA
+from mlshim.consts import _HERE
 
 from functools import wraps
 
 
 def abs_short_path(f):
+    """ Wrapper to return absolute short path for Windows.
+
+    """
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         # Get a path from the function
@@ -61,9 +66,17 @@ def get_licenses(matlab_version=None, root=None):
     return license_files
 
 
+def get_templates():
+    import glob
+
+    templates = glob.glob(os.path.join(_HERE, "templates", "*.m"))
+    templates = [os.path.basename(path) for path in templates]
+    return templates
+
+
 def get_versions(root=None):
     """Return all versions of MATLAB installed in a given folder.
-    
+
     Returns
     -------
     list

@@ -1,3 +1,5 @@
+from typing import List
+
 from setuptools import find_packages
 from setuptools import setup
 
@@ -9,9 +11,9 @@ def readme():
         return f.read()
 
 
-requirements = ["Click>=7.*", "jinja2"]
-setup_requirements = []
-test_requirements = []
+requirements: List[str] = ["Click>=7.*", "jinja2"]
+setup_requirements: List[str] = []
+test_requirements: List[str] = []
 
 setup(
     name="mlshim",
@@ -38,7 +40,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    entry_points={"console_scripts": ["mlshim=mlshim.cli:main",],},
+    entry_points={"console_scripts": ["mlshim=mlshim.cli:main"]},
     install_requires=requirements,
     setup_requires=setup_requirements,
     test_suite="tests",

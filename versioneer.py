@@ -273,17 +273,14 @@ Dedication" license (CC0-1.0), as described in
 https://creativecommons.org/publicdomain/zero/1.0/ .
 
 """
-
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 import errno
 import json
 import os
 import re
 import subprocess
 import sys
+from typing import Dict
 
 
 class VersioneerConfig:
@@ -368,8 +365,8 @@ class NotThisMethod(Exception):
 
 
 # these dictionaries contain VCS-specific tools
-LONG_VERSION_PY = {}
-HANDLERS = {}
+LONG_VERSION_PY: Dict[str, str] = {}
+HANDLERS: Dict[str, Dict[str, str]] = {}
 
 
 def register_vcs_handler(vcs, method):  # decorator
@@ -1120,7 +1117,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
                 fmt = "tag '%s' doesn't start with prefix '%s'"
                 print(fmt % (full_tag, tag_prefix))
             pieces["error"] = "tag '{}' doesn't start with prefix '{}'".format(
-                full_tag, tag_prefix,
+                full_tag, tag_prefix
             )
             return pieces
         pieces["closest-tag"] = full_tag[len(tag_prefix) :]

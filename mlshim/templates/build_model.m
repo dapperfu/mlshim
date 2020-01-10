@@ -1,6 +1,6 @@
 %% Automatically Generated Run Script
 {% for header, value in headers.items() %}
-% {{ header }}: {{ value }} 
+% {{ header }}: {{ value }}
 {% endfor %}
 
 try
@@ -8,13 +8,13 @@ try
     restoredefaultpath;
 {%- for lang, cfg in mex_cfg.items() %}
     mex('-setup:C:\Program Files\MATLAB\{{ matlab_version }}\bin\win64\mexopts\{{ cfg }}.xml','{{ lang }}');
-{% endfor %} 
+{% endfor %}
 {% if working_directory is not none %}
     cd('{{ working_directory }}');
 {% endif %}
 {%- if profile -%}
     profile('on');
-{% endif %}    
+{% endif %}
     model = '{{ model }}';
     open_system(model);
     slbuild(model);
@@ -22,7 +22,7 @@ try
     profile('off');
     profileinfo = profile('info');
     profsave(profileinfo,'profile_results');
-{% endif %}    
+{% endif %}
     fprintf('########## Finished ##########\n');
     exit(0);
 catch me

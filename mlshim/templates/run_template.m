@@ -1,6 +1,6 @@
 %% Automatically Generated Run Script
 {% for header, value in obj.headers.items() %}
-% {{ header }}: {{ value }} 
+% {{ header }}: {{ value }}
 {% endfor %}
 
 failed=0

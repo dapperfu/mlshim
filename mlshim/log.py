@@ -2,10 +2,7 @@
 import logging
 import sys
 
-LOG_LEVEL_MAP = {
-    0: "INFO",
-    1: "DEBUG",
-}
+LOG_LEVEL_MAP = {0: "INFO", 1: "DEBUG"}
 
 LOG_LEVELS = {
     "DEBUG": logging.DEBUG,

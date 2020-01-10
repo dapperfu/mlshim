@@ -27,7 +27,7 @@ Created for use with generating Model Based Design code with Jenkins and maintai
 
 https://arokem.github.io/python-matlab-bridge/
 
-For just interactive Python <-> MATLAB scripting this is an excellent solution but I ran into issues with my specific use cases. 
+For just interactive Python <-> MATLAB scripting this is an excellent solution but I ran into issues with my specific use cases.
 
 - Pros:
   - Works great.
@@ -63,8 +63,8 @@ https://www.mathworks.com/help/matlab/ref/matlabwindows.html
 
 ## ```-batch```
 
-> Execute MATLAB script, statement, or function non-interactively. MATLAB:  
-> 
+> Execute MATLAB script, statement, or function non-interactively. MATLAB:
+>
 > - Starts without the desktop
 > - Does not display the splash screen
 > - Executes statement

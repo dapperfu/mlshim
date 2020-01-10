@@ -11,6 +11,7 @@ import os
 import re
 import subprocess
 import sys
+from typing import Dict
 
 
 def get_keywords():
@@ -48,8 +49,8 @@ class NotThisMethod(Exception):
     """Exception raised if a method is not valid for the current scenario."""
 
 
-LONG_VERSION_PY = {}
-HANDLERS = {}
+LONG_VERSION_PY: Dict[str, str] = {}
+HANDLERS: Dict[str, Dict[str, str]] = {}
 
 
 def register_vcs_handler(vcs, method):  # decorator
@@ -306,7 +307,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
                 fmt = "tag '%s' doesn't start with prefix '%s'"
                 print(fmt % (full_tag, tag_prefix))
             pieces["error"] = "tag '{}' doesn't start with prefix '{}'".format(
-                full_tag, tag_prefix,
+                full_tag, tag_prefix
             )
             return pieces
         pieces["closest-tag"] = full_tag[len(tag_prefix) :]

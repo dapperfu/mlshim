@@ -1,11 +1,9 @@
-import datetime
 import os
 import socket
 import tempfile
 import time
 import uuid
 from datetime import datetime
-from datetime import timezone
 from subprocess import Popen
 
 from jinja2 import Environment
@@ -27,15 +25,18 @@ _START_TIMEOUT = 60  # seconds
 if not os.path.exists(_MATLAB_BASE):
     raise FileNotFoundError(_MATLAB_BASE)
 
+from typing import Union, Optional
+
 
 class Matlab:
     def __init__(
         self,
-        working_directory=os.path.abspath(os.curdir),
-        pref_dir=None,
-        template="run_template.m",
-        version=None,
-        timeout=720,
+        *args,
+        working_directory: str = os.path.abspath(os.curdir),
+        pref_dir: Optional[str] = None,
+        template: Optional[str] = "run_template.m",
+        version: Optional[str] = None,
+        timeout: Union[int, bool] = 600,
     ):
         r"""Example function with types documented in the docstring.
 
@@ -53,10 +54,15 @@ class Matlab:
             Directory to put run script and log file in.
             Default: Output of ```tempfile.gettempdir()```
         """
+        # No ambigious calls.
+        assert len(args) == 0
         # Instance UUID.
         self.uuid = uuid.uuid4()
         # Matlab script template
         self.template = template
+        # Timeout
+        self.timeout = timeout
+
         # Assign version
         if version is None:
             # Get all MATLAB® versions in the given root.
@@ -79,10 +85,7 @@ class Matlab:
         else:
             self.pref_dir = pref_dir
 
-        loader_directories = [
-            os.path.join(_HERE, "templates"),
-            os.curdir,
-        ]
+        loader_directories = [os.path.join(_HERE, "templates"), os.curdir]
         self._env = Environment(
             loader=FileSystemLoader(loader_directories), trim_blocks=True
         )
@@ -110,13 +113,13 @@ class Matlab:
     def _uuid(self):
         return str(self.uuid).replace("-", "")
 
-    @property
+    @property  # type: ignore
     @abs_short_path
     def log_file(self):
         log_name = f"mlshim_{self._uuid}.log"
         return os.path.join(self.working_directory, log_name)
 
-    @property
+    @property  # type: ignore
     @abs_short_path
     def run_script(self):
         run_name = f"mlshim_{self._uuid}.m"
@@ -125,18 +128,18 @@ class Matlab:
     @property
     def matlabroot(self):
         """matlabroot
-        
+
         A character vector giving the full path to the folder where MATLAB® is installed.
-        
+
         Should match the output of calling ```matlabroot``` inside of MATLAB®.
         """
         return os.path.join(_MATLAB_BASE, self.version)
 
-    @property
+    @property  # type: ignore
     @abs_short_path
     def exe(self):
         """Full path to the MATLAB® executable."""
-        return os.path.join(self.matlabroot, "bin", "matlab.exe")
+        return os.path.join(self.matlabroot, "bin", "self.exe")
 
     @property
     def headers(self):
@@ -151,31 +154,30 @@ class Matlab:
 
     def render_template(self, *args, **kwargs):
         """Render Jinja2 MATLAB® script template.
-        
+
         All keyword arguments are passed to the Jinja2 template.
         """
-        assert len(args)==0
+        assert len(args) == 0
         return self._template.render(obj=self, **kwargs)
-        
- 
+
     def gen_script(self, *args, **kwargs):
         """Write rendered Jinja2 script template and write to run_script path.
-        
+
         All keyword arguments are passed to the Jinja2 template.
         """
-        assert len(args)==0
+        assert len(args) == 0
+        while not os.path.exists(self.working_directory):
+            os.makedirs(self.working_directory)
+            time.sleep(1)
         run_script_body = self.render_template(**kwargs)
         with open(self.run_script, "w") as fid:
             print(run_script_body, file=fid)
 
-    def run(self, *args, wait=True, timeout=720, **kwargs):
+    def run(self, *args, **kwargs):
         """Execute MATLAB® instance.
-        
+
         """
-        assert len(args)==0
-        if not os.path.exists(self.working_directory):
-            os.makedirs(self.working_directory)
-        time.sleep(1)
+        assert len(args) == 0
         self.gen_script(**kwargs)
         matlab_runner(self, wait=wait, timeout=timeout)
 
@@ -183,10 +185,9 @@ class Matlab:
     def _template(self):
         return self._env.get_template(self.template)
 
-
-    def _matlab_runner(matlab, wait=True, timeout=720):
+    def _matlab_runner(self):
         """
-        Run the cmd_array with Popen, parse matlab.log_file for
+        Run the cmd_array with Popen, parse self.log_file for
             output from generate_run_script.
 
         Wait until MATLAB® finishes to exit.
@@ -197,23 +198,20 @@ class Matlab:
             TimeoutError("Matlab execution timed out")
             Runtimeprint("Matlab processing failed")
         """
-        if not os.path.exists(matlab.working_directory):
-            os.makedirs(matlab.working_directory)
-
-        os.environ["MATLAB_PREFDIR"] = matlab.pref_dir
-        os.chdir(matlab.working_directory)
+        os.environ["MATLAB_PREFDIR"] = self.pref_dir
+        os.chdir(self.working_directory)
 
         # Remove log file if it exists.
-        if os.path.exists(matlab.log_file):
-            os.unlink(matlab.log_file)
+        if os.path.exists(self.log_file):
+            os.unlink(self.log_file)
 
         # Run the MATLAB® command
-        proc = Popen(matlab.cmd)
+        proc = Popen(self.cmd)
         # Start timer
         t_start = time.time()
 
         # Step 1. Wait for the log file to exist
-        while not os.path.exists(matlab.log_file):
+        while not os.path.exists(self.log_file):
             # Check to see if timeout has been exceeded
             if time.time() - t_start > _START_TIMEOUT:
                 # Print the ERROR and raise a timeout ERROR
@@ -226,7 +224,7 @@ class Matlab:
         started = False
         while not started:
             # Read the log file
-            with open(matlab.log_file, "r") as fid:
+            with open(self.log_file, "r") as fid:
                 lines = fid.readlines()
             # Read each of the lines in it and remove the new line endings.
             lines = [line.strip() for line in lines]
@@ -245,11 +243,11 @@ class Matlab:
         # While the processing isn't complete
         while True:
             # Open the log file read only
-            with open(matlab.log_file, "r") as fid:
+            with open(self.log_file, "r") as fid:
                 lines = fid.readlines()
             # Strip ending new line from all lines
             lines = [line.strip() for line in lines]
-            if wait is False:
+            if self.timeout is None:
                 print("Not Waiting for Matlab")
                 break
             # Check for the finished line
@@ -268,5 +266,4 @@ class Matlab:
                 # Print the error and raise a timeout error
                 print(f"{timeout:.2f}s Timelimit Exceeded")
                 raise TimeoutError("Matlab execution timed out")
-            print(proc)
             time.sleep(_SLEEP_TIME)
