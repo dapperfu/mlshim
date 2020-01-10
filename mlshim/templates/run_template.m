@@ -3,13 +3,11 @@
 % {{ header }}: {{ value }}
 {% endfor %}
 
-failed=0
+failed=0;
 try
     fprintf('########## Started ##########\n');
-{% if cwd is not none %}
-    cd('{{ obj.working_directory }}');
-{% endif %}
-
+    restoredefaultpath;
+    cd('{{ obj.start_directory }}');
 {%- for script in scripts %}
     {{ script }}
 {% endfor %}

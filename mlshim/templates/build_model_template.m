@@ -10,7 +10,7 @@ try
     mex('-setup:C:\Program Files\MATLAB\{{ matlab_version }}\bin\win64\mexopts\{{ cfg }}.xml','{{ lang }}');
 {% endfor %}
 {% if working_directory is not none %}
-    cd('{{ working_directory }}');
+    cd('{{ obj.start_directory }}');
 {% endif %}
 {%- if profile -%}
     profile('on');

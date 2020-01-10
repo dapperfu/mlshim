@@ -63,6 +63,7 @@ def main(
         f"MATLAB Working Directory: {config.matlab.working_directory}"
     )
     config.logging.debug(f"MATLAB Log File: {config.matlab.log_file}")
+    config.logging.debug(f"MATLAB Run Script: {config.matlab.run_script}")
 
 
 @main.command()
@@ -76,7 +77,7 @@ def debug(config: Config):
 @pass_config
 def launch(config: Config):
     """
-
+    Launch MATLAB
     """
     config.matlab.template = "launch_template.m"
     config.matlab.timeout = 0
@@ -90,6 +91,7 @@ def run(config: Config, m_script: str):
     """
     Run a matlab script.
     """
+    config.matlab.template = "run_template.m"
     config.matlab.run(scripts=[m_script])
 
 
@@ -100,7 +102,7 @@ def build(config: Config, model: str):
     """
     Build Simulink Model.
     """
-    config.matlab.template = "build_template.m"
+    config.matlab.template = "build_model_template.m"
     config.matlab.run(model=model)
 
 

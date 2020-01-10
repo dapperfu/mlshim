@@ -1,3 +1,8 @@
+**/prefdir_*
+**/mlshim_*
+
+.mypy_cache/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

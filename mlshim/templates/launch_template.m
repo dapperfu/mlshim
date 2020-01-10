@@ -5,8 +5,9 @@
 
 try
     fprintf('########## Started ##########\n');
+    restoredefaultpath;
 {% if cwd is not none %}
-    cd('{{ obj.working_directory }}');
+    cd('{{ obj.start_directory }}');
 {% endif %}
 catch me
     fprintf('########## Failed ##########\n');

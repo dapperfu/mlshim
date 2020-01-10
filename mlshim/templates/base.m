@@ -7,10 +7,7 @@ try
     fprintf('########## Started ##########\n');
 
 {% block body %}
-
-{% if cwd is not none %}
-    cd('{{ working_directory }}');
-{% endif %}
+cd('{{ obj.start_directory }}');
 
 {%- for path in paths %}
     add('{{ path }}');

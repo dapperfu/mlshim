@@ -17,9 +17,15 @@ from mlshim.consts import _HERE
 from functools import wraps
 
 
+def clean_log(log_path):
+    pass
+
+
 def abs_short_path(f):
     """ Wrapper to return absolute short path for Windows.
 
+    Returns a short Windows path if the path exists.
+    Returns absolute path otherwise.
     """
 
     @wraps(f)
@@ -67,6 +73,7 @@ def get_licenses(matlab_version=None, root=None):
 
 
 def get_templates():
+    """Return all templates in the templates directory."""
     import glob
 
     templates = glob.glob(os.path.join(_HERE, "templates", "*.m"))
