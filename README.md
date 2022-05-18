@@ -19,7 +19,7 @@ Created for use with generating Model Based Design code with Jenkins and maintai
 
 # Install
 
-    pip install git+https://github.com/jed-frey/mlshim.git
+    pip install git+https://github.com/dapperfu/mlshim.git
 
 # Alternatives
 
